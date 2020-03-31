@@ -100,53 +100,38 @@ func (r *LocalDockerRunner) Healthcheck(fix bool, engine api.Engine, ow *rpc.Out
 	r.controlNetworkID = "testground-control"
 
 	report := api.HealthcheckReport{}
-	hcHelper := SequentialHealthcheckHelper{report: &report}
+	hcHelper := HealthcheckHelper{report: &report}
 
 	// setup infra which is common between local:docker and local:exec
 	healthcheck_common_local_infra(&hcHelper, ctx, ow, cli, r.controlNetworkID, engine.EnvConfig().SrcDir, r.outputsDir)
 
 	// sidecar, build it if necessary. This uses a customized HostConfig to bind mount
 	hcHelper.Enlist("local-sidecar",
-		DefaultContainerChecker(ctx,
-			ow,
-			cli,
-			"testground-sidecar"),
-		CustomContainerFixer(ctx,
-			ow,
-			cli,
-			engine.EnvConfig().SrcDir,
-			&ContainerFixerOpts{
-				ContainerName: "testground-sidecar",
-				ImageName:     "testground-sidecar:latest",
-				Pull:          false,
-				HostConfig: &container.HostConfig{
-					NetworkMode: container.NetworkMode(r.controlNetworkID),
-					// To lookup namespaces. Can't use SandboxKey for some reason.
-					PidMode: "host",
-					// We need _both_ to actually get a network namespace handle.
-					// We may be able to drop sys_admin if we drop netlink
-					// sockets that we're not using.
-					CapAdd: []string{"NET_ADMIN", "SYS_ADMIN"},
-					// needed to talk to docker.
-					Mounts: []mount.Mount{{
-						Type:   mount.TypeBind,
-						Source: "/var/run/docker.sock",
-						Target: "/var/run/docker.sock",
-					}},
-					Resources: container.Resources{
-						Ulimits: []*units.Ulimit{
-							{Name: "nofile", Hard: InfraMaxFilesUlimit, Soft: InfraMaxFilesUlimit},
-						},
-					},
-				},
-				Cmds: []string{
-					"sidecar",
-					"--runner",
-					"docker",
-					"--pprof",
+		DefaultContainerChecker(ctx, ow, cli, "testground-sidecar"),
+		CustomContainerFixer(ctx, ow, cli, engine.EnvConfig().SrcDir, &ContainerFixerOpts{
+			ContainerName: "testground-sidecar",
+			ImageName:     "testground-sidecar:latest",
+			Pull:          false,
+			HostConfig: &container.HostConfig{
+				NetworkMode: container.NetworkMode(r.controlNetworkID),
+				// To lookup namespaces. Can't use SandboxKey for some reason.
+				PidMode: "host",
+				// We need _both_ to actually get a network namespace handle.
+				// We may be able to drop sys_admin if we drop netlink
+				// sockets that we're not using.
+				CapAdd: []string{"NET_ADMIN", "SYS_ADMIN"},
+				// needed to talk to docker.
+				Mounts: []mount.Mount{{
+					Type:   mount.TypeBind,
+					Source: "/var/run/docker.sock",
+					Target: "/var/run/docker.sock",
+				}},
+				Resources: container.Resources{
+					Ulimits: []*units.Ulimit{{Name: "nofile", Hard: InfraMaxFilesUlimit, Soft: InfraMaxFilesUlimit}},
 				},
 			},
-		),
+			Cmds: []string{"sidecar", "--runner", "docker", "--pprof"},
+		}),
 	)
 
 	// RunChecks will fill the report and return any errors.
