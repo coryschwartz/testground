@@ -69,7 +69,7 @@ var (
 	testplanSysctls = []v1.Sysctl{{Name: "net.core.somaxconn", Value: "10000"}}
 
 	// resource requests and limits for the `collect-outputs` pod
-	collectOutputsResourceCPU    = resource.MustParse("2000m")
+	collectOutputsResourceCPU    = resource.MustParse("1000m")
 	collectOutputsResourceMemory = resource.MustParse("1024Mi")
 )
 
