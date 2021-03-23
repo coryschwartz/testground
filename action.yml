@@ -19,7 +19,7 @@ outputs:
     description: 'high-level result of the test'
 runs:
   using: 'docker'
-  image: 'Dockerfile.actions'
+  image: './Dockerfile.actions'
   args:
     - ${{ inputs.backend }}
     - ${{ inputs.plan_directory }}
